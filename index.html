@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Animal Trivia Basketball - Universal Font</title>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #ff6b6b;
+            --secondary: #4ecdc4;
+            --accent: #ffe66d;
+            --dark: #2f2f2f;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            /* Updated font stack: prioritizing Comic Neue for all devices */
+            font-family: 'Comic Neue', 'Comic Sans MS', cursive, sans-serif;
+            background-color: #f7d794;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 600px;
+            height: 800px;
+            max-width: 100vw;
+            max-height: 100vh;
+            background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 60%, #55efc4 60%, #55efc4 70%, #f3a683 70%, #f3a683 100%);
+            border: 10px solid white;
+            border-radius: 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .hidden { display: none !important; }
+
+        #question-box {
+            background: white;
+            padding: 25px;
+            border-radius: 25px;
+            border: 5px solid var(--secondary);
+            margin-bottom: 20px;
+            width: 85%;
+        }
+
+        h1, h2, .btn {
+            /* Ensuring headers and buttons use the boldest version of the font */
+            font-weight: 700;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: 4px solid white;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 50px;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 80%;
+            box-shadow: 0 5px 0 #d63031;
+            -webkit-tap-highlight-color: transparent;
+            font-family: inherit; /* Forces buttons to use Comic Neue */
+        }
+
+        #court-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            touch-action: none;
+        }
+
+        #score-board {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 15px;
+            font-weight: bold;
+            z-index: 5;
+        }
+
+        #feedback-text {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3.5rem;
+            color: var(--accent);
+            text-shadow: 3px 3px #000;
+            pointer-events: none;
+            z-index: 20;
+            opacity: 0;
+        }
+
+        .chibi {
+            position: absolute;
+            bottom: 31%;
+            font-size: 2.8rem;
+            z-index: 2;
+            animation: bounce 1.5s infinite ease-in-out;
+            pointer-events: none;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="score-board">SCORE: <span id="score">0</span></div>
+        <div id="feedback-text">AMAZING!</div>
+
+        <div class="chibi" style="left: 3%;">🐼</div>
+        <div class="chibi" style="left: 15%; animation-delay: 0.2s;">🐯</div>
+        <div class="chibi" style="left: 27%; animation-delay: 0.4s;">🐰</div>
+        <div class="chibi" style="right: 27%; animation-delay: 0.1s;">🐱</div>
+        <div class="chibi" style="right: 15%; animation-delay: 0.5s;">🐶</div>
+        <div class="chibi" style="right: 3%; animation-delay: 0.3s;">🦊</div>
+
+        <canvas id="court-canvas" width="600" height="800"></canvas>
+
+        <div id="start-screen" class="screen">
+            <h1 style="color: white; text-shadow: 3px 3px var(--primary); font-size: 2.5rem;">🐾 ANIMAL TRIVIA<br>HOOPS! 🏀</h1>
+            <button class="btn" onclick="startGame()">START GAME</button>
+        </div>
+
+        <div id="trivia-screen" class="screen hidden" style="background: rgba(255,255,255,0.85);">
+            <div id="question-box"><h2 id="question-text">?</h2></div>
+            <div id="answer-buttons"></div>
+        </div>
+
+        <div id="end-screen" class="screen hidden">
+            <h1 style="color: white; font-size: 3rem;">FINISH! 🏁</h1>
+            <h2 id="compliment" style="color: var(--accent); text-shadow: 2px 2px #000;"></h2>
+            <h2 id="final-score" style="color: white;">Score: 0</h2>
+            <button class="btn" onclick="location.reload()">PLAY AGAIN</button>
+        </div>
+    </div>
+
+<script>
+    const questions = [
+        { q: "Which mammal sleeps hanging upside down?", a: "Bat", options: ["Bat", "Sloth", "Monkey"] },
+        { q: "Which animal has a large hump on its back?", a: "Camel", options: ["Camel", "Horse", "Giraffe"] },
+        { q: "Which ocean creature can jump really high?", a: "Dolphin", options: ["Dolphin", "Shark", "Tuna"] },
+        { q: "I have no legs but move very fast. What am I?", a: "Snake", options: ["Snake", "Worm", "Eel"] },
+        { q: "Which insect goes through a transformation to grow wings?", a: "Butterfly", options: ["Butterfly", "Ladybird", "Moth"] },
+        { q: "I am the largest animal in the world. What am I?", a: "Whale", options: ["Whale", "Elephant", "Great White Shark"] },
+        { q: "Which creature has 8 legs but no bones?", a: "Octopus", options: ["Octopus", "Spider", "Crab"] }
+    ];
+
+    let currentQuestion = 0;
+    let score = 0;
+    let isShootingPhase = false;
+    
+    // Kept the "higher" ball height (y: 580)
+    let ball = { x: 300, y: 580, r: 28, vx: 0, vy: 0, active: false };
+    let hoop = { x: 300, y: 220, w: 90 };
+    let dragStart = null;
+    let feedbackActive = false;
+
+    const canvas = document.getElementById('court-canvas');
+    const ctx = canvas.getContext('2d');
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playSound(freq, type, duration, vol=0.1) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function startGame() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        document.getElementById('start-screen').classList.add('hidden');
+        showQuestion();
+    }
+
+    function showQuestion() {
+        if (currentQuestion >= questions.length) { endGame(); return; }
+        isShootingPhase = false;
+        document.getElementById('trivia-screen').classList.remove('hidden');
+        const q = questions[currentQuestion];
+        document.getElementById('question-text').innerText = q.q;
+        const btnContainer = document.getElementById('answer-buttons');
+        btnContainer.innerHTML = '';
+        
+        const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+
+        shuffledOptions.forEach(opt => {
+            const b = document.createElement('button');
+            b.className = 'btn';
+            b.innerText = opt;
+            b.onclick = () => {
+                if (opt === q.a) {
+                    score += 10; updateScore();
+                    showFeedback("CORRECT! +10", "#4ecdc4");
+                    playSound(880, 'sine', 0.2);
+                    setTimeout(() => {
+                        document.getElementById('trivia-screen').classList.add('hidden');
+                        isShootingPhase = true;
+                        resetBall();
+                    }, 800);
+                } else {
+                    showFeedback("NOT QUITE!", "#ff6b6b");
+                    playSound(150, 'square', 0.3);
+                    setTimeout(() => { currentQuestion++; showQuestion(); }, 1200);
+                }
+            };
+            btnContainer.appendChild(b);
+        });
+    }
+
+    function updateScore() { document.getElementById('score').innerText = score; }
+
+    function showFeedback(text, color) {
+        const el = document.getElementById('feedback-text');
+        el.innerText = text; el.style.color = color; el.style.opacity = 1;
+        feedbackActive = true;
+        setTimeout(() => { el.style.opacity = 0; feedbackActive = false; }, 1200);
+    }
+
+    function resetBall() { ball.x = 300; ball.y = 580; ball.vx = 0; ball.vy = 0; ball.active = false; }
+
+    function drawNet(x, y, w) {
+        ctx.beginPath();
+        ctx.lineWidth = 3;
+        for(let i=0; i <= 8; i++) {
+            let xPos = (x - w/2) + (i * w/8);
+            ctx.strokeStyle = "white"; 
+            ctx.beginPath(); ctx.moveTo(xPos, y); ctx.lineTo(xPos - 5, y + 25); ctx.stroke();
+            ctx.strokeStyle = "#ff4757"; 
+            ctx.beginPath(); ctx.moveTo(xPos - 5, y + 25); ctx.lineTo(xPos, y + 55); ctx.stroke();
+            ctx.strokeStyle = "#2e86de"; 
+            ctx.beginPath(); ctx.moveTo(xPos, y + 55); ctx.lineTo(xPos - 3, y + 85); ctx.stroke();
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, 600, 800);
+        ctx.strokeStyle = "white"; ctx.lineWidth = 8; ctx.strokeRect(200, 100, 200, 150);
+        drawNet(hoop.x, hoop.y, hoop.w);
+        ctx.beginPath(); ctx.strokeStyle = "#e67e22"; ctx.lineWidth = 10;
+        ctx.moveTo(hoop.x - hoop.w/2, hoop.y); ctx.lineTo(hoop.x + hoop.w/2, hoop.y); ctx.stroke();
+
+        if (isShootingPhase) {
+            ctx.fillStyle = "rgba(0,0,0,0.1)";
+            ctx.beginPath(); ctx.ellipse(ball.x, 740, 28, 8, 0, 0, Math.PI*2); ctx.fill();
+            
+            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+            ctx.fillStyle = "#ff8c00"; ctx.fill();
+            ctx.strokeStyle = "black"; ctx.lineWidth = 3; ctx.stroke();
+
+            if (ball.active) {
+                ball.x += ball.vx; ball.y += ball.vy; ball.vy += 0.5;
+
+                if (ball.x < -50 || ball.x > 650 || ball.y < -400 || ball.y > 850) {
+                    ball.active = false;
+                    showFeedback("MISS!", "#999");
+                    setTimeout(() => { currentQuestion++; showQuestion(); }, 1000);
+                }
+
+                if (ball.vy > 0 && Math.abs(ball.y - hoop.y) < 15 && Math.abs(ball.x - hoop.x) < 40) {
+                    score += 50; updateScore();
+                    showFeedback("SLAM DUNK! +50", "var(--accent)");
+                    playSound(600, 'triangle', 0.4);
+                    ball.active = false;
+                    setTimeout(() => { currentQuestion++; showQuestion(); }, 1200);
+                }
+            }
+        }
+        requestAnimationFrame(draw);
+    }
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+        const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
+        return {
+            x: (clientX - rect.left) * (canvas.width / rect.width),
+            y: (clientY - rect.top) * (canvas.height / rect.height)
+        };
+    }
+
+    function handleStart(e) {
+        if (!isShootingPhase || ball.active || feedbackActive) return;
+        dragStart = getPos(e);
+        if (e.cancelable) e.preventDefault();
+    }
+
+    function handleEnd(e) {
+        if (!dragStart) return;
+        let endX, endY;
+        
+        if (e.changedTouches) {
+            const touch = e.changedTouches[0];
+            const rect = canvas.getBoundingClientRect();
+            endX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+            endY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+        } else {
+            const rect = canvas.getBoundingClientRect();
+            endX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            endY = (e.clientY - rect.top) * (canvas.height / rect.height);
+        }
+
+        ball.vx = (dragStart.x - endX) * 0.14;
+        ball.vy = (dragStart.y - endY) * 0.14;
+        ball.active = true;
+        dragStart = null;
+    }
+
+    canvas.addEventListener('mousedown', handleStart);
+    window.addEventListener('mouseup', handleEnd);
+    canvas.addEventListener('touchstart', handleStart, {passive: false});
+    canvas.addEventListener('touchend', handleEnd, {passive: false});
+
+    function endGame() {
+        document.getElementById('trivia-screen').classList.add('hidden');
+        const end = document.getElementById('end-screen');
+        end.classList.remove('hidden');
+        document.getElementById('final-score').innerText = "Total Score: " + score;
+        const comps = ["ANIMAL SUPERSTAR!", "BASKETBALL PRO!", "LEGENDARY!", "PURE GENIUS!", "ANIMAL EXPERT!"];
+        document.getElementById('compliment').innerText = comps[Math.floor(Math.random()*comps.length)];
+        const melody = [523, 659, 783, 1046];
+        melody.forEach((f, i) => setTimeout(() => playSound(f, 'sine', 0.5, 0.2), i * 150));
+    }
+
+    draw();
+</script>
+</body>
+</html>
